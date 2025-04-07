@@ -1,0 +1,180 @@
+/* Supprimer l'import incorrect de tailwindcss */
+/* Custom gutter style for react-split */
+.gutter {
+  background-color: #616161;
+  background-repeat: no-repeat;
+  background-position: 50%;
+}
+
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+  width: 4px !important;
+}
+
+div.react-mde {
+  height: 100%;
+  color: white;
+  border: 0 !important;
+}
+
+div.mde-header {
+  background-color: #364153;
+  border: 0;
+}
+
+div.mde-tabs button:hover {
+  background-color: #2B7FFF;
+}
+
+div.mde-tabs button.selected {
+  background-color: #2B7FFF;
+}
+
+.mde-header ul.mde-header-group li.mde-header-item button {
+  color: white !important;
+}
+
+.mde-header ul.mde-header-group li.mde-header-item button:hover {
+  color: #2B7FFF !important;
+}
+
+.mde-header .mde-tabs button.selected {
+  border: 0;
+}
+
+div.react-mde div:nth-child(2) {
+  height: 100%;
+}
+
+.mde-text,
+.mde-textarea-wrapper {
+  height: 100% !important;
+}
+
+.mde-text:focus  {
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+div.react-mde ul {
+  list-style-type: disc;
+}
+
+div.react-mde ol {
+  list-style-type: decimal;
+}
+
+/* Styles pour la prévisualisation Markdown */
+.markdown-body {
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.markdown-body h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+  font-weight: 600;
+  border-bottom: 1px solid #4a5568;
+  padding-bottom: 0.3em;
+}
+
+.markdown-body h2 {
+  font-size: 1.5em;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  border-bottom: 1px solid #4a5568;
+  padding-bottom: 0.3em;
+}
+
+.markdown-body h3 {
+  font-size: 1.25em;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-body h4 {
+  font-size: 1em;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-body blockquote {
+  margin: 0;
+  padding: 0 1em;
+  color: #a0aec0;
+  border-left: 0.25em solid #4a5568;
+}
+
+.markdown-body ul, .markdown-body ol {
+  padding-left: 2em;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-body code {
+  font-family: monospace;
+  background-color: rgba(27, 31, 35, 0.5);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.markdown-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #2d3748;
+  border-radius: 3px;
+  margin-bottom: 16px;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  margin: 8px 0;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.markdown-body table th, .markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid #4a5568;
+}
+
+.markdown-body table tr {
+  background-color: #1a202c;
+  border-top: 1px solid #4a5568;
+}
+
+.markdown-body table tr:nth-child(2n) {
+  background-color: #2d3748;
+}
+
+/* Styles pour les images chargées depuis la BD */
+.db-image {
+  display: inline-block;
+  max-width: 100%;
+  transition: all 0.3s ease;
+}
+
+.db-image.image-loading {
+  border: 1px dashed #666;
+  min-height: 50px;
+  opacity: 0.7;
+}
