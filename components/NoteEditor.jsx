@@ -244,6 +244,15 @@ const NoteEditor = () => {
       {selectedNote ? (
         <>
           <div className="mb-4">
+            {/* Ajout du champ de titre ici, au-dessus de la barre d'outils */}
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-gray-700 text-white px-4 py-2 text-xl font-semibold rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Titre de la note..."
+            />
+            
             {/* Formatting and image buttons container */}
             <div className="flex mb-2 space-x-2">
               <button

@@ -2,22 +2,23 @@
   "name": "notes-app-electron",
   "version": "1.0.0",
   "description": "A notes application built with Electron and React",
+  "author": "Your Name",
   "main": "main.js",
   "scripts": {
     "start": "concurrently \"vite --port 3000\" \"cross-env NODE_ENV=development electron .\"",
     "build": "vite build",
     "electron:build": "electron-builder",
-    "package": "npm run build && npm run electron:build"
+    "package": "npm run build && npm run electron:build",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "better-sqlite3": "^8.7.0",
     "electron-is-dev": "^2.0.0",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
     "react-split": "^2.0.14",
-    "showdown": "^2.1.0",
-    "sqlite": "^4.2.1",
-    "sqlite3": "^5.1.7"
+    "showdown": "^2.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.4",
@@ -36,8 +37,13 @@
     "files": [
       "dist/**/*",
       "main.js",
-      "preload.js",
-      "notes.db"
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "notes.db",
+        "to": "notes.db"
+      }
     ],
     "directories": {
       "buildResources": "assets",
