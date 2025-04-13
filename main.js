@@ -45,7 +45,7 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS images (
         id TEXT PRIMARY KEY,
         note_id TEXT NOT NULL,
-        data BLOB NOT NULL,
+        image_data BLOB NOT NULL,
         filename TEXT NOT NULL,
         mime_type TEXT NOT NULL,
         size INTEGER NOT NULL,
@@ -209,19 +209,50 @@ ipcMain.handle('updateNoteNotebook', (_, noteId, newNotebookId) => {
 });
 
 ipcMain.handle('saveImage', (_, noteId, imageData, name, type) => {
-  const imageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  
-  // Convertir le tableau en Buffer pour better-sqlite3
-  const buffer = Buffer.from(imageData);
-  
-  db.prepare(
-    'INSERT INTO images (id, note_id, data, filename, mime_type, size) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(imageId, noteId, buffer, name, type, buffer.length);
-  
-  return imageId;
+  try {
+    console.log(`Sauvegarde d'image pour la note ${noteId}, taille: ${imageData.length} octets, type: ${type}`);
+    
+    const imageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
+    // Convertir le tableau en Buffer pour better-sqlite3
+    const buffer = Buffer.from(imageData);
+    
+    console.log(`Buffer créé avec succès, taille: ${buffer.length} octets`);
+    
+    // Vérifier si la table a bien une colonne image_data de type BLOB
+    const tableInfo = db.prepare('PRAGMA table_info(images)').all();
+    console.log('Structure de la table images:', tableInfo);
+    
+    // Utilisez image_data au lieu de data
+    const stmt = db.prepare(
+      'INSERT INTO images (id, note_id, image_data, filename, mime_type, size) VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    
+    stmt.run(imageId, noteId, buffer, name, type, buffer.length);
+    
+    console.log(`Image ${imageId} sauvegardée avec succès`);
+    return imageId;
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde de l\'image:', error);
+    throw error;
+  }
 });
 
 ipcMain.handle('getImage', (_, imageId) => {
-  const image = db.prepare('SELECT data FROM images WHERE id = ?').get(imageId);
-  return image ? image.data : null;
+  try {
+    console.log(`Récupération de l'image ${imageId}`);
+    // Utilisez image_data au lieu de data
+    const image = db.prepare('SELECT image_data FROM images WHERE id = ?').get(imageId);
+    
+    if (!image) {
+      console.log(`Aucune image trouvée avec l'ID ${imageId}`);
+      return null;
+    }
+    
+    console.log(`Image ${imageId} récupérée, taille: ${image.image_data ? image.image_data.length : 0} octets`);
+    return image.image_data;
+  } catch (error) {
+    console.error(`Erreur lors de la récupération de l'image ${imageId}:`, error);
+    throw error;
+  }
 });

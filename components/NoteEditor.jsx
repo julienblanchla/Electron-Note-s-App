@@ -48,8 +48,9 @@ const NoteEditor = () => {
     try {
       let html = converter.makeHtml(text || '');
       
+      // Améliorer la regex pour capturer correctement les images générées par Showdown
       html = html.replace(
-        /<img src="image:\/\/([a-zA-Z0-9-]+)"([^>]*)>/g,
+        /<img src="image:\/\/([a-zA-Z0-9-_]+)"([^>]*)>/g,
         (match, imageId, restAttributes) => {
           if (loadedImagesRef.current[imageId]) {
             return `<img src="${loadedImagesRef.current[imageId]}" class="db-image" ${restAttributes}>`;
@@ -87,7 +88,10 @@ const NoteEditor = () => {
 
   useEffect(() => {
     const loadAllImages = async () => {
-      const regex = /!\[.*?\]\(image:\/\/([a-zA-Z0-9-]+)\)/g;
+      if (!content) return;
+      
+      // Améliorer la regex pour capturer tous les formats d'ID possibles
+      const regex = /!\[.*?\]\(image:\/\/([a-zA-Z0-9-_]+)\)/g;
       let match;
       const idsToLoad = [];
       
@@ -103,37 +107,46 @@ const NoteEditor = () => {
       console.log(`Chargement de ${idsToLoad.length} nouvelles images`);
       
       try {
-        // Removed dynamic import, use regular import instead
-        let imagesLoaded = false;
-        
         for (const imageId of idsToLoad) {
           try {
             console.log(`Chargement de l'image ${imageId}`);
+            
+            // Définir un placeholder pendant le chargement et forcer un premier rafraîchissement
+            loadedImagesRef.current[imageId] = "loading";
+            setForceRefresh(prev => prev + 1);
+            
             const imageData = await getImage(imageId);
             
             if (imageData && imageData.length > 0) {
-              const blob = new Blob([imageData], { type: "image/png" });
+              // Créer le blob avec un type MIME générique pour les images
+              const blob = new Blob([imageData], { type: "image/jpeg" });
               const url = URL.createObjectURL(blob);
               loadedImagesRef.current[imageId] = url;
-              imagesLoaded = true;
+              console.log(`Image ${imageId} chargée avec succès, URL: ${url.substring(0, 30)}...`);
+              
+              // Forcer un rafraîchissement après chaque image chargée
+              setForceRefresh(prev => prev + 1);
             } else {
               console.warn(`Aucune donnée pour l'image ${imageId}`);
+              // Utiliser une image d'erreur
+              loadedImagesRef.current[imageId] = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23ff5555' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><line x1='9' y1='9' x2='15' y2='15'/><line x1='15' y1='9' x2='9' y2='15'/></svg>";
+              setForceRefresh(prev => prev + 1);
             }
           } catch (error) {
             console.error(`Erreur lors du chargement de l'image ${imageId}:`, error);
+            loadedImagesRef.current[imageId] = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23ff5555' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><text x='12' y='16' text-anchor='middle' font-size='8' fill='%23ff5555'>Error</text></svg>";
+            setForceRefresh(prev => prev + 1);
           }
-        }
-        
-        if (imagesLoaded) {
-          setForceRefresh(prev => prev + 1);
         }
       } catch (error) {
         console.error("Erreur lors du chargement des images:", error);
       }
     };
     
-    loadAllImages();
-  }, [content]);
+    if (selectedNote) {
+      loadAllImages();
+    }
+  }, [content, selectedNote]);
 
   useEffect(() => {
     if (!selectedNote) return;
@@ -172,55 +185,77 @@ const NoteEditor = () => {
     if (!file) return;
     
     setImageError("");
-    if (!file.type.startsWith("image/")) {
-      setImageError("Veuillez sélectionner une image valide");
-      return;
-    }
-    const MAX_SIZE = 2 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      setImageError("L'image est trop volumineuse (max 2Mo)");
-      return;
-    }
+    
     try {
+      // Validation
+      if (!file.type.startsWith("image/")) {
+        setImageError("Veuillez sélectionner une image valide");
+        return;
+      }
+      
+      const MAX_SIZE = 2 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        setImageError("L'image est trop volumineuse (max 2Mo)");
+        return;
+      }
+      
+      console.log(`Traitement de l'image: ${file.name}, type: ${file.type}, taille: ${file.size} octets`);
+      
+      // Optimiser la lecture du fichier
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
-      const imageData = Array.from(uint8Array);
-
-      const imageId = await saveImage(selectedNote, imageData, file.name, file.type);
-      const imageMarkdown = `![${file.name}](image://${imageId})`;
-      console.log(`Markdown de l'image inséré: ${imageMarkdown}`);
       
+      // Créer un tableau normal pour transmission IPC (évite les références circulaires)
+      const imageData = Array.from(uint8Array);
+      
+      console.log(`Envoi de l'image au processus principal, taille: ${imageData.length} octets`);
+      
+      // Sauvegarder l'image
+      const imageId = await saveImage(selectedNote, imageData, file.name, file.type);
+      console.log(`Image sauvegardée avec ID: ${imageId}`);
+      
+      // Créer le markdown pour l'image
+      const imageMarkdown = `![${file.name}](image://${imageId})`;
+      
+      // Stocker l'image dans le cache local pour affichage immédiat
       const blob = new Blob([uint8Array], { type: file.type });
       const url = URL.createObjectURL(blob);
       loadedImagesRef.current[imageId] = url;
+      console.log(`Image ${imageId} mise en cache immédiatement avec URL: ${url.substring(0, 30)}...`);
       
-      setForceRefresh(prev => prev + 1);
-
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const startPos = textarea.selectionStart;
-        const endPos = textarea.selectionEnd;
+      // Mettre à jour le contenu avec l'image
+      if (textareaRef.current) {
+        const startPos = textareaRef.current.selectionStart;
+        const endPos = textareaRef.current.selectionEnd;
         const newContent = content.substring(0, startPos) + imageMarkdown + content.substring(endPos);
         setContent(newContent);
-        await handleUpdateNoteContent(selectedNote, newContent);
-        lastManualSaveRef.current = newContent;
+        
+        // Forcer une sauvegarde immédiate
+        await updateNoteContent(selectedNote, newContent);
+        
+        // Mettre à jour la position du curseur
         setTimeout(() => {
-          textarea.focus();
+          textareaRef.current.focus();
           const newCursorPos = startPos + imageMarkdown.length;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
+          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
         }, 0);
       } else {
         const newContent = content + "\n\n" + imageMarkdown;
         setContent(newContent);
-        await handleUpdateNoteContent(selectedNote, newContent);
-        lastManualSaveRef.current = newContent;
+        await updateNoteContent(selectedNote, newContent);
       }
+      
+      // Réinitialiser l'input file
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      
+      // Forcer le rafraîchissement
+      setForceRefresh(prev => prev + 1);
+      
     } catch (error) {
       console.error("Erreur lors de l'upload de l'image:", error);
-      setImageError("Erreur lors de l'upload de l'image");
+      setImageError(`Erreur: ${error.message || "Problème lors de l'upload"}`);
     }
   };
 
@@ -238,6 +273,32 @@ const NoteEditor = () => {
       }, 0);
     }
   };
+
+  // Ajouter cet effet après les autres pour surveiller l'état des images chargées
+  useEffect(() => {
+    // Vérifier si le contenu contient des images
+    const regex = /!\[.*?\]\(image:\/\/([a-zA-Z0-9-_]+)\)/g;
+    let match;
+    let hasImages = false;
+    const loadedIds = [];
+    
+    // Vérifier quelles images sont dans le contenu
+    while ((match = regex.exec(content)) !== null) {
+      hasImages = true;
+      const id = match[1];
+      if (loadedImagesRef.current[id]) {
+        loadedIds.push(id);
+      }
+    }
+    
+    // Seulement log si des images sont présentes
+    if (hasImages) {
+      console.log(`Contenu avec ${loadedIds.length} images chargées`);
+      if (selectedNote) {
+        console.log('État des images:', Object.keys(loadedImagesRef.current).length);
+      }
+    }
+  }, [content, selectedNote, forceRefresh]);
 
   return (
     <div className="flex-none min-w-0 p-4 flex flex-col bg-gray-800 overflow-hidden">
