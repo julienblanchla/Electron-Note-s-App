@@ -48,11 +48,13 @@ const NoteEditor = () => {
     try {
       let html = converter.makeHtml(text || '');
       
-      // Améliorer la regex pour capturer correctement les images générées par Showdown
+      // Remplacer les URLs d'images avec les données chargées
       html = html.replace(
         /<img src="image:\/\/([a-zA-Z0-9-_]+)"([^>]*)>/g,
         (match, imageId, restAttributes) => {
           if (loadedImagesRef.current[imageId]) {
+            console.log(`Affichage de l'image ${imageId} avec URL:`, 
+                       loadedImagesRef.current[imageId].substring(0, 30) + '...');
             return `<img src="${loadedImagesRef.current[imageId]}" class="db-image" ${restAttributes}>`;
           }
           return `<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>" data-image-id="${imageId}" class="db-image image-loading" ${restAttributes}>`;
@@ -90,7 +92,7 @@ const NoteEditor = () => {
     const loadAllImages = async () => {
       if (!content) return;
       
-      // Améliorer la regex pour capturer tous les formats d'ID possibles
+      // Trouver toutes les références d'images dans le contenu markdown
       const regex = /!\[.*?\]\(image:\/\/([a-zA-Z0-9-_]+)\)/g;
       let match;
       const idsToLoad = [];
@@ -104,49 +106,42 @@ const NoteEditor = () => {
       
       if (idsToLoad.length === 0) return;
       
-      console.log(`Chargement de ${idsToLoad.length} nouvelles images`);
+      console.log(`Chargement de ${idsToLoad.length} images`);
       
-      try {
-        for (const imageId of idsToLoad) {
-          try {
-            console.log(`Chargement de l'image ${imageId}`);
+      for (const imageId of idsToLoad) {
+        try {
+          console.log(`Tentative de chargement de l'image ${imageId}`);
+          const imageData = await window.electronAPI.getImage(imageId);
+          
+          // Déboguer le format des données retournées
+          console.log(`Image reçue - type:`, typeof imageData, 
+                      `taille:`, imageData ? imageData.length : 0,
+                      `est un tableau:`, Array.isArray(imageData));
+          
+          if (imageData && imageData.length > 0) {
+            // Convertir les données en Uint8Array pour créer un Blob
+            const uint8Array = new Uint8Array(imageData);
+            const blob = new Blob([uint8Array]);
+            const url = URL.createObjectURL(blob);
             
-            // Définir un placeholder pendant le chargement et forcer un premier rafraîchissement
-            loadedImagesRef.current[imageId] = "loading";
+            loadedImagesRef.current[imageId] = url;
+            console.log(`Image ${imageId} chargée avec succès`);
+            
+            // Forcer un rafraîchissement
             setForceRefresh(prev => prev + 1);
-            
-            const imageData = await getImage(imageId);
-            
-            if (imageData && imageData.length > 0) {
-              // Créer le blob avec un type MIME générique pour les images
-              const blob = new Blob([imageData], { type: "image/jpeg" });
-              const url = URL.createObjectURL(blob);
-              loadedImagesRef.current[imageId] = url;
-              console.log(`Image ${imageId} chargée avec succès, URL: ${url.substring(0, 30)}...`);
-              
-              // Forcer un rafraîchissement après chaque image chargée
-              setForceRefresh(prev => prev + 1);
-            } else {
-              console.warn(`Aucune donnée pour l'image ${imageId}`);
-              // Utiliser une image d'erreur
-              loadedImagesRef.current[imageId] = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23ff5555' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><line x1='9' y1='9' x2='15' y2='15'/><line x1='15' y1='9' x2='9' y2='15'/></svg>";
-              setForceRefresh(prev => prev + 1);
-            }
-          } catch (error) {
-            console.error(`Erreur lors du chargement de l'image ${imageId}:`, error);
-            loadedImagesRef.current[imageId] = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23ff5555' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><text x='12' y='16' text-anchor='middle' font-size='8' fill='%23ff5555'>Error</text></svg>";
-            setForceRefresh(prev => prev + 1);
+          } else {
+            console.warn(`Aucune donnée pour l'image ${imageId}`);
           }
+        } catch (error) {
+          console.error(`Erreur lors du chargement de l'image ${imageId}:`, error);
         }
-      } catch (error) {
-        console.error("Erreur lors du chargement des images:", error);
       }
     };
     
     if (selectedNote) {
       loadAllImages();
     }
-  }, [content, selectedNote]);
+  }, [content, selectedNote, getImage]);
 
   useEffect(() => {
     if (!selectedNote) return;
@@ -305,16 +300,32 @@ const NoteEditor = () => {
       {selectedNote ? (
         <>
           <div className="mb-4">
-            {/* Ajout du champ de titre ici, au-dessus de la barre d'outils */}
+            {/* Champ de titre amélioré */}
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-gray-700 text-white px-4 py-2 text-xl font-semibold rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Titre de la note..."
+              className="w-full bg-gray-700 text-white px-4 py-2 text-xl font-semibold rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 border-b-2 border-blue-500"
+              placeholder="Cliquez pour modifier le titre de la note..."
+              aria-label="Titre de la note"
             />
             
-            {/* Formatting and image buttons container */}
+            {/* Indicateur de sauvegarde */}
+            <div className="text-xs text-gray-400 mb-2 flex items-center">
+              {isSaving ? (
+                <span className="text-yellow-400 flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sauvegarde en cours...
+                </span>
+              ) : (
+                <span className="text-green-400">Note sauvegardée</span>
+              )}
+            </div>
+            
+            {/* Barre d'outils existante */}
             <div className="flex mb-2 space-x-2">
               <button
                 onClick={() => wrapSelectedText("**", "**")}

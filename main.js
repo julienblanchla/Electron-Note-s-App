@@ -241,7 +241,12 @@ ipcMain.handle('saveImage', (_, noteId, imageData, name, type) => {
 ipcMain.handle('getImage', (_, imageId) => {
   try {
     console.log(`Récupération de l'image ${imageId}`);
-    // Utilisez image_data au lieu de data
+    
+    // Afficher les informations de la table images
+    const tableInfo = db.prepare("PRAGMA table_info(images)").all();
+    console.log("Structure de la table images:", tableInfo);
+    
+    // Utiliser la bonne colonne pour récupérer les données (image_data, pas data)
     const image = db.prepare('SELECT image_data FROM images WHERE id = ?').get(imageId);
     
     if (!image) {
@@ -249,8 +254,18 @@ ipcMain.handle('getImage', (_, imageId) => {
       return null;
     }
     
-    console.log(`Image ${imageId} récupérée, taille: ${image.image_data ? image.image_data.length : 0} octets`);
-    return image.image_data;
+    // Vérifier le type de données retournées
+    console.log(`Image ${imageId} récupérée, type:`, typeof image.image_data, 
+                `Buffer:`, image.image_data instanceof Buffer);
+    
+    // Si les données sont un Buffer, les convertir en tableau pour le transport IPC
+    if (image.image_data) {
+      // Convertir en tableau pour le transport IPC
+      const array = Array.from(new Uint8Array(image.image_data));
+      return array;
+    }
+    
+    return null;
   } catch (error) {
     console.error(`Erreur lors de la récupération de l'image ${imageId}:`, error);
     throw error;
