@@ -131,7 +131,7 @@ app.on('will-quit', () => {
 
 // IPC handlers (avec better-sqlite3 - API synchrone)
 ipcMain.handle('getNotebooks', () => {
-  return db.prepare('SELECT * FROM notebooks ORDER BY title').all();
+  return db.prepare('SELECT * FROM notebooks').all();
 });
 
 ipcMain.handle('addNotebook', (_, title) => {

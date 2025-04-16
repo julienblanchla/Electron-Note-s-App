@@ -1,0 +1,20 @@
+directories:
+  output: release
+  buildResources: assets
+appId: com.notes.app
+productName: Notes App
+files:
+  - filter:
+      - dist/**/*
+      - main.js
+      - preload.js
+extraResources:
+  - from: notes.db
+    to: notes.db
+win:
+  target: nsis
+mac:
+  target: dmg
+linux:
+  target: AppImage
+electronVersion: 26.6.10
